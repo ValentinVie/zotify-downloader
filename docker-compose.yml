@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  zotify-downloader:
+    build: .
+    container_name: zotify-downloader
+    restart: unless-stopped
+    environment:
+      # Listening account (Spotify Web API)
+      - LISTENING_CLIENT_ID=${LISTENING_CLIENT_ID}
+      - LISTENING_CLIENT_SECRET=${LISTENING_CLIENT_SECRET}
+      - LISTENING_REFRESH_TOKEN=${LISTENING_REFRESH_TOKEN}
+      
+      # Downloading account (zotify credentials)
+      - DOWNLOAD_USERNAME=${DOWNLOAD_USERNAME}
+      - DOWNLOAD_PASSWORD=${DOWNLOAD_PASSWORD}
+      
+      # Configuration
+      - DOWNLOAD_FOLDER=${DOWNLOAD_FOLDER:-/app/downloads/Music}
+      - BACKLOG_FILE=${BACKLOG_FILE:-/app/data/backlog.json}
+      - LISTEN_CHECK_INTERVAL=${LISTEN_CHECK_INTERVAL:-30}
+      - DOWNLOAD_INTERVAL=${DOWNLOAD_INTERVAL:-900}
+    volumes:
+      - ./downloads/Music:/app/downloads/Music
+      - ./data:/app/data
+    env_file:
+      - .env
+

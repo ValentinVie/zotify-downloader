@@ -6,3 +6,4 @@ protobuf
 pwinput
 tabulate[widechars]
 tqdm
+requests
