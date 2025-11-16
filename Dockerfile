@@ -26,5 +26,5 @@ RUN mkdir -p /app/data /app/downloads
 
 WORKDIR /app
 
-# Default command runs the main service
-CMD ["python3", "-m", "downloader.main"]
+# Default command (overridden by docker-compose)
+CMD ["python3", "-m", "downloader.watcher"]

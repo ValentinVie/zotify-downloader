@@ -1,16 +1,31 @@
 version: '3.8'
 
 services:
-  zotify-downloader:
+  spotify-watcher:
     build: .
-    container_name: zotify-downloader
+    container_name: spotify-watcher
     restart: unless-stopped
+    command: ["python3", "-m", "downloader.watcher"]
     environment:
       # Listening account (Spotify Web API)
       - LISTENING_CLIENT_ID=${LISTENING_CLIENT_ID}
       - LISTENING_CLIENT_SECRET=${LISTENING_CLIENT_SECRET}
       - LISTENING_REFRESH_TOKEN=${LISTENING_REFRESH_TOKEN}
       
+      # Configuration
+      - BACKLOG_FILE=${BACKLOG_FILE:-/app/data/backlog.json}
+      - LISTEN_CHECK_INTERVAL=${LISTEN_CHECK_INTERVAL:-30}
+    volumes:
+      - ./data:/app/data
+    env_file:
+      - .env
+
+  spotify-downloader:
+    build: .
+    container_name: spotify-downloader
+    restart: unless-stopped
+    command: ["python3", "-m", "downloader.downloader"]
+    environment:
       # Downloading account (zotify credentials)
       - DOWNLOAD_USERNAME=${DOWNLOAD_USERNAME}
       - DOWNLOAD_PASSWORD=${DOWNLOAD_PASSWORD}
@@ -18,7 +33,6 @@ services:
       # Configuration
       - DOWNLOAD_FOLDER=${DOWNLOAD_FOLDER:-/app/downloads/Music}
       - BACKLOG_FILE=${BACKLOG_FILE:-/app/data/backlog.json}
-      - LISTEN_CHECK_INTERVAL=${LISTEN_CHECK_INTERVAL:-30}
       - DOWNLOAD_INTERVAL=${DOWNLOAD_INTERVAL:-900}
     volumes:
       - ./downloads/Music:/app/downloads/Music

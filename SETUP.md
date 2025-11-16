@@ -144,7 +144,7 @@ cat data/backlog.json
 
 ### Manual backlog processing:
 ```bash
-docker-compose exec zotify-downloader python3 -m downloader.main processor
+docker-compose exec spotify-downloader python3 -m downloader.downloader
 ```
 
 ## Getting a Refresh Token
