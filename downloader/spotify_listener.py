@@ -5,9 +5,12 @@ Monitors the listening account's currently playing track using Spotify Web API
 import os
 import time
 import requests
+import logging
 from typing import Optional, Dict
 import json
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 
 class SpotifyListener:
@@ -24,8 +27,11 @@ class SpotifyListener:
     def _get_access_token(self) -> str:
         """Get or refresh access token"""
         if self.access_token and time.time() < self.token_expires_at:
+            # Type assertion: we know it's not None because of the check above
+            assert self.access_token is not None
             return self.access_token
-            
+        
+        logger.debug("Refreshing access token")
         url = "https://accounts.spotify.com/api/token"
         data = {
             "grant_type": "refresh_token",
@@ -34,15 +40,24 @@ class SpotifyListener:
             "client_secret": self.client_secret
         }
         
-        response = requests.post(url, data=data)
-        response.raise_for_status()
-        
-        token_data = response.json()
-        self.access_token = token_data["access_token"]
-        expires_in = token_data.get("expires_in", 3600)
-        self.token_expires_at = time.time() + expires_in - 60  # Refresh 1 min early
-        
-        return self.access_token
+        try:
+            response = requests.post(url, data=data)
+            response.raise_for_status()
+            
+            token_data = response.json()
+            access_token = token_data.get("access_token")
+            if not access_token:
+                raise ValueError("No access token in response")
+            
+            self.access_token = access_token
+            expires_in = token_data.get("expires_in", 3600)
+            self.token_expires_at = time.time() + expires_in - 60  # Refresh 1 min early
+            
+            logger.debug(f"Access token refreshed, expires in {expires_in}s")
+            return access_token
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to refresh access token: {e}")
+            raise
     
     def _make_api_request(self, endpoint: str, params: Optional[Dict] = None) -> Optional[Dict]:
         """Make authenticated API request"""
@@ -105,10 +120,12 @@ class SpotifyListener:
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 204:
                 # 204 No Content means no active playback
+                logger.debug("No active playback (204 No Content)")
                 return None
+            logger.warning(f"HTTP error getting currently playing track: {e}")
             raise
         except Exception as e:
-            print(f"Error getting currently playing track: {e}")
+            logger.error(f"Error getting currently playing track: {e}", exc_info=True)
             return None
     
     def check_for_new_track(self) -> Optional[Dict]:

@@ -27,9 +27,12 @@ This project extends zotify to automatically download music from Spotify based o
 4. Note your **Client ID** and **Client Secret**
 5. Set redirect URI to `http://localhost:8888/callback` (or any localhost URL)
 6. Get a refresh token using one of these methods:
-   - Use the [Authorization Code Flow](https://developer.spotify.com/documentation/web-api/tutorials/code-flow)
-   - Use a tool like [spotify-refresh-token](https://github.com/tobychui/spotify-refresh-token) or similar
-   - Use the Spotify Web API tutorial to get the refresh token
+   - **Easiest**: Run the included helper script:
+     ```bash
+     python3 get_refresh_token.py
+     ```
+     This will guide you through the process and automatically get your refresh token.
+   - Use the [Authorization Code Flow tutorial](https://developer.spotify.com/documentation/web-api/tutorials/code-flow)
 
 ### 2. Configure Environment Variables
 
@@ -149,10 +152,24 @@ docker-compose exec spotify-downloader python3 -m downloader.downloader
 
 ## Getting a Refresh Token
 
-To get a refresh token for the Spotify Web API, you can:
+### Using the Helper Script (Recommended)
+
+The easiest way to get a refresh token is to use the included `get_refresh_token.py` script:
+
+```bash
+python3 get_refresh_token.py
+```
+
+The script will:
+1. Ask for your Client ID and Client Secret
+2. Open your browser for authorization
+3. Automatically receive the callback and exchange it for a refresh token
+4. Display your refresh token to add to your `.env` file
+
+### Alternative Methods
 
 1. Use the [Authorization Code Flow tutorial](https://developer.spotify.com/documentation/web-api/tutorials/code-flow)
-2. Use a Python script or tool to get the refresh token
+2. Use a tool like [spotify-refresh-token](https://github.com/tobychui/spotify-refresh-token) or similar
 3. Use online tools (be careful with credentials)
 
 The refresh token allows the app to access the Spotify Web API without user interaction.

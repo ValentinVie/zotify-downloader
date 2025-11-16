@@ -5,14 +5,17 @@ Processes backlog tracks using zotify with the downloading account
 import os
 import sys
 import argparse
+import logging
 from pathlib import Path
 from typing import Optional, Dict
 
 # Add zotify to path
 sys.path.insert(0, '/app')
 
+logger = logging.getLogger(__name__)
+
 from zotify.app import download_from_urls
-from zotify.config import Config
+from zotify.config import Config, CONFIG_VALUES
 from zotify.zotify import Zotify
 from librespot.audio.decoders import AudioQuality
 
@@ -31,6 +34,8 @@ class DownloadProcessor:
         if self._zotify_initialized and Zotify.SESSION is not None:
             return
         
+        logger.info("Initializing zotify session...")
+        
         # Create args object for zotify
         args = argparse.Namespace()
         args.username = self.download_username
@@ -42,7 +47,7 @@ class DownloadProcessor:
         args.root_path = self.download_folder
         
         # Set all config values to None (will use defaults from config file)
-        for key in Config.CONFIG_VALUES:
+        for key in CONFIG_VALUES:
             attr_name = key.lower().replace('_', '-')
             setattr(args, attr_name, None)
         
@@ -65,6 +70,8 @@ class DownloadProcessor:
         }
         Zotify.DOWNLOAD_QUALITY = quality_options.get('auto', AudioQuality.HIGH)
         
+        is_premium = Zotify.check_premium()
+        logger.info(f"Zotify initialized successfully (Premium: {is_premium}, Quality: {Zotify.DOWNLOAD_QUALITY})")
         self._zotify_initialized = True
         
     def download_track(self, track_info: Dict) -> bool:
@@ -80,7 +87,7 @@ class DownloadProcessor:
             spotify_url = f"https://open.spotify.com/track/{track_id}"
         
         if not spotify_url or not spotify_url.startswith("http"):
-            print(f"Error: Invalid URL for track {track_info.get('track_id')}: {spotify_url}")
+            logger.error(f"Invalid URL for track {track_info.get('track_id')}: {spotify_url}")
             return False
         
         try:
@@ -90,16 +97,19 @@ class DownloadProcessor:
             # Download the track
             track_name = track_info.get('track_name', 'Unknown')
             artists = ', '.join(track_info.get('artists', []))
-            print(f"Downloading: {track_name} by {artists}")
+            logger.info(f"Downloading: {track_name} by {artists}")
             
             success = download_from_urls([spotify_url])
+            
+            if success:
+                logger.info(f"Successfully downloaded: {track_name} by {artists}")
+            else:
+                logger.warning(f"Download returned False for: {track_name} by {artists}")
             
             return success
             
         except Exception as e:
-            print(f"Error downloading track {track_info.get('track_id')}: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Error downloading track {track_info.get('track_id')}: {e}", exc_info=True)
             return False
     
     def process_backlog(self, backlog_manager, max_tracks: int = 10) -> int:
@@ -115,14 +125,15 @@ class DownloadProcessor:
                 break
             
             track_id = track["track_id"]
-            print(f"Processing track: {track.get('track_name', 'Unknown')} ({track_id})")
+            track_name = track.get('track_name', 'Unknown')
+            logger.info(f"Processing track: {track_name} ({track_id})")
             
             if self.download_track(track):
                 backlog_manager.remove_track(track_id)
                 downloaded += 1
-                print(f"Successfully downloaded and removed from backlog: {track.get('track_name')}")
+                logger.info(f"Successfully downloaded and removed from backlog: {track_name}")
             else:
-                print(f"Failed to download: {track.get('track_name')}")
+                logger.warning(f"Failed to download: {track_name}, keeping in backlog for retry")
                 # Keep in backlog for retry later
         
         return downloaded

@@ -6,10 +6,19 @@ import os
 import time
 import signal
 import sys
+import logging
 from pathlib import Path
 
 from downloader.backlog_manager import BacklogManager
 from downloader.download_processor import DownloadProcessor
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
 
 
 class SpotifyDownloaderService:
@@ -55,41 +64,41 @@ class SpotifyDownloaderService:
         
         missing = [var for var in required if not os.getenv(var)]
         if missing:
+            logger.error(f"Missing required environment variables: {', '.join(missing)}")
             raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
+        logger.info("Configuration validated successfully")
     
     def _signal_handler(self, signum, frame):
         """Handle shutdown signals"""
-        print("\nShutting down downloader...")
+        logger.info("Received shutdown signal, shutting down downloader...")
         self.running = False
         sys.exit(0)
     
     def run(self):
         """Run the downloader service"""
-        print("Starting Spotify Downloader Service...")
-        print(f"Download interval: {self.download_interval}s (every {self.download_interval // 60} minutes)")
-        print(f"Backlog file: {self.backlog_file}")
-        print(f"Download folder: {self.download_folder}")
+        logger.info("Starting Spotify Downloader Service...")
+        logger.info(f"Download interval: {self.download_interval}s (every {self.download_interval // 60} minutes)")
+        logger.info(f"Backlog file: {self.backlog_file}")
+        logger.info(f"Download folder: {self.download_folder}")
         
         while self.running:
             try:
-                print("Processing backlog...")
+                logger.debug("Processing backlog...")
                 
                 backlog_size = self.backlog.get_backlog_size()
                 
                 if backlog_size > 0:
-                    print(f"Backlog has {backlog_size} track(s), processing...")
+                    logger.info(f"Backlog has {backlog_size} track(s), processing...")
                     downloaded = self.processor.process_backlog(self.backlog, max_tracks=10)
-                    print(f"Downloaded {downloaded} track(s)")
+                    logger.info(f"Downloaded {downloaded} track(s)")
                 else:
-                    print("Backlog is empty, nothing to process.")
+                    logger.debug("Backlog is empty, nothing to process.")
                 
                 # Sleep for the downloader interval
                 time.sleep(self.download_interval)
                 
             except Exception as e:
-                print(f"Error in downloader loop: {e}")
-                import traceback
-                traceback.print_exc()
+                logger.error(f"Error in downloader loop: {e}", exc_info=True)
                 time.sleep(self.download_interval)
 
 

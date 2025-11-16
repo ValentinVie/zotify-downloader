@@ -6,10 +6,19 @@ import os
 import time
 import signal
 import sys
+import logging
 from pathlib import Path
 
 from downloader.spotify_listener import SpotifyListener
 from downloader.backlog_manager import BacklogManager
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
 
 
 class SpotifyWatcherService:
@@ -57,19 +66,21 @@ class SpotifyWatcherService:
         
         missing = [var for var in required if not os.getenv(var)]
         if missing:
+            logger.error(f"Missing required environment variables: {', '.join(missing)}")
             raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
+        logger.info("Configuration validated successfully")
     
     def _signal_handler(self, signum, frame):
         """Handle shutdown signals"""
-        print("\nShutting down watcher...")
+        logger.info("Received shutdown signal, shutting down watcher...")
         self.running = False
         sys.exit(0)
     
     def run(self):
         """Run the watcher service"""
-        print("Starting Spotify Watcher Service...")
-        print(f"Monitoring account for currently playing tracks (checking every {self.check_interval}s)")
-        print(f"Backlog file: {self.backlog_file}")
+        logger.info("Starting Spotify Watcher Service...")
+        logger.info(f"Monitoring account for currently playing tracks (checking every {self.check_interval}s)")
+        logger.info(f"Backlog file: {self.backlog_file}")
         
         while self.running:
             try:
@@ -78,19 +89,17 @@ class SpotifyWatcherService:
                 if new_track:
                     track_name = new_track.get("track_name", "Unknown")
                     artists = ", ".join(new_track.get("artists", []))
-                    print(f"New track detected: {track_name} by {artists}")
+                    logger.info(f"New track detected: {track_name} by {artists}")
                     
                     if self.backlog.add_track(new_track):
-                        print(f"Added to backlog: {track_name}")
+                        logger.info(f"Added to backlog: {track_name}")
                     else:
-                        print(f"Track already in backlog: {track_name}")
+                        logger.debug(f"Track already in backlog: {track_name}")
                 
                 time.sleep(self.check_interval)
                 
             except Exception as e:
-                print(f"Error in watcher loop: {e}")
-                import traceback
-                traceback.print_exc()
+                logger.error(f"Error in watcher loop: {e}", exc_info=True)
                 time.sleep(self.check_interval)
 
 
